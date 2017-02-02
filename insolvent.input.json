@@ -1,0 +1,25 @@
+{
+    "incomes": [
+        {
+            "name": "Walmart",
+            "amount": 200.00,
+            "type": "PRIMARY",
+            "schedule": {
+                "type": "INTERVAL",
+                "period": 14,
+                "start": "2016-01-01"
+            }
+        }
+    ],
+    "expenses": [
+        {
+            "name": "Rent",
+            "amount": 300.00,
+            "schedule": {
+                "type": "INTERVAL",
+                "period": 14,
+                "start": "2016-01-01"
+            }
+        }
+    ]
+}
