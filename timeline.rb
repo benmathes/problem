@@ -36,18 +36,20 @@ class Timeline
         schedule: expense["schedule"])
     end
     self.generate
+    @planned = []
   end
 
   def generate
     # @timeline is an array indexed on day of the year
     # where we will mark all the incomes/expenses.
-    # e.g. @timeline[0] = [<Transaction>, <Transaction>]
+    # As per problem definition, incomes go before expenses on a day
+    # e.g. @timeline[0] = [income, expense]
     # TODO: make this a sparse-er data store.
     return @timeline unless @timeline.nil?
     @timeline = []
 
     # TODO: we put income before expenses on each day on purpose. That's part of the assumption.
-    # a less brittle approach would be to enforce the order in some kind of date.get_transaction()
+    # a less brittle approach would be to enforce the order in some kind of date.get_transactions()
     @incomes.each do |income|
       transactions = income.transactions(timeline_start: self.start, timeline_end: self.end)
       transactions.each do |transaction|
@@ -69,6 +71,10 @@ class Timeline
     return @timeline
   end
 
+
+  # returns the flattened list of transactions for the year,
+  # removing nil days (i.e. no transactions)
+  # e.g. [[income, expense], nil, [income]] -> [income, expense, income]
   def flattened
     return @flattened unless @flattened.nil?
     @flattened = []
@@ -81,6 +87,8 @@ class Timeline
     return @flattened
   end
 
+
+  # runs through the timeline's transactions and calculates some general stats
   def calc_stats
     running_total = 0
     total_income = 0
@@ -106,61 +114,89 @@ class Timeline
     @solvent = true if @solvent.nil?
   end
 
+
   def solvent?
     calc_stats if @solvent.nil?
     return @solvent
   end
 
-  def plan
+  def to_s
+    "<Timeline, #{@stats}>"
+  end
+
+
+  def inspect
+    "<Timeline, #{@stats}>"
+  end
+
+
+  def plan!
+    allocate!
+    plan_daily_spend!
+    return @planned
+  end
+
+  private
+
+  def allocate!
     # Go backwards to find money to cover expenses. There could be a more mathematically clean
     # way to do this. but the algorithm should be:
     # 1) simple: easy to prove it will never ruin the customer
     # 2) simple: easy to trust by the end user!
+    # 3) understandable: smooth with locality
     reversed = flattened.reverse
-    reversed.each_with_index do |txn, i|
-      # if it's an expense...
-      if txn.expense?
-        # go back in time to find the covering income
-        reversed[i..-1].each_with_index do |prior_txn|
-          break if txn.sourced?
-          if prior_txn.income?
-            # ensure we haven't already allocated funds for this prior income
-            next if prior_txn.unallocated <= 0
+    reversed.each_with_index do |expense, i|
+      # actually iterating over all txns, but only care about expenses.
+      # makes later code more readable, expense vs transaction
+      next unless expense.expense?
+      puts "finding source for #{expense.recurrence.name} on #{expense.date}. #{expense.unsourced} of #{expense.amount.abs} unsourced" if VERBOSE
 
-            if txn.amount <= prior_txn.unallocated
-              allocation_amount = txn.amount
-            else
-              allocation_amount = prior_txn.unallocated
-            end
+      # go back in time to find the covering income
+      reversed[i..-1].each_with_index do |income|
+        break if expense.sourced?
+        # actually iterating over all txns, but only care about expenses.
+        # makes later code more readable, expense vs transaction
+        next unless income.income?
+        next if income.allocated?
+        puts "  found income: #{income.recurrence.name} on #{income.date}. #{income.unallocated} of #{income.amount} unallocated" if VERBOSE
 
-            prior_txn.allocations.push({
-              name: txn.recurrence.name,
-              date: txn.date,
-              amount: allocation_amount.abs
-            })
+        if expense.unsourced <= income.unallocated
+          allocation_amount = expense.unsourced
+          puts "     and #{allocation_amount} of #{income.unallocated} unallocated covers remaiing #{expense.unsourced} expense " if VERBOSE
+        else
+          allocation_amount = income.unallocated
+          puts "     but #{allocation_amount} unallocated is less than #{expense.unsourced} remaining " if VERBOSE
+        end
 
-            # after allocationg the prior txn, bring down spendable
-            prior_txn.spendable = (prior_txn.spendable || prior_txn.amount) - allocation_amount
+        # TODO: we drop out of the world of class instances to raw hashes here for expediency.
+        # A more-pure approach would be: have Allocation and Source as a class, which wraps
+        # around the allocated/sourced Transactions. Similar to a many-to-many table in SQL
+        income.allocations.push({
+          name: expense.recurrence.name,
+          date: expense.date,
+          amount: allocation_amount
+        })
+        expense.sources.push({
+          name: income.recurrence.name,
+          date: income.date,
+          amount: allocation_amount
+        })
+        # after allocationg the prior txn, bring down spendable
+        income.spendable = (income.spendable || income.amount) - allocation_amount
 
-            # if we are solvent this shouldn't happen -- sanity check
-            if prior_txn.spendable < 0
-              throw Error("Should never allocate more than ")
-            end
-
-            txn.sources.push({
-              name: prior_txn.recurrence.name,
-              date: prior_txn.date,
-              amount: allocation_amount.abs
-            })
-          end
+        # if we are solvent this shouldn't happen -- sanity check
+        if income.spendable < 0
+          throw Error("Should never allocate more than amount of income transaction.")
         end
       end
-      #pp txn
-      exit
     end
-
-    # straighten it out again
-    return reversed.reverse
+    @planned = reversed.reverse
   end
+
+
+  def plan_daily_spend!
+
+  end
+
 
 end

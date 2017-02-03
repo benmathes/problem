@@ -1,9 +1,8 @@
-
-
 # A transaction.
 # belongs to a recurrence and timeline
 class Transaction
-  attr_accessor :timeline, :recurrence, :amount, :date, :sources, :allocations, :spendable
+  attr_accessor :timeline, :recurrence, :amount, :date, :sources, :allocations, :spendable,
+                :unsmoothed_daily_spend, :daily_spend, :next_income
   def initialize(timeline:, recurrence:, amount:, date:)
     @timeline = timeline
     @amount = amount
@@ -12,16 +11,30 @@ class Transaction
     @sources = []
     @allocations = []
     @spendable = nil
+    @daily_spend = nil
+    @unsmoothed_daily_spend = nil
   end
 
   def unallocated
-    allocated = @allocations.map{|allocation| allocation[:amount]}.reduce(:+) || 0
-    @amount - allocated
+    allocated = @allocations.map{|allocation| allocation[:amount].abs}.reduce(:+) || 0
+    @amount.abs - allocated
+  end
+
+  def unsourced
+    sourced = @sources.map{|source| source[:amount].abs}.reduce(:+) || 0
+    @amount.abs - sourced
   end
 
   def sourced?
-    sourced = @sources.map{|source| source[:amount]}.reduce(:+) || 0
-    sourced >= @amount
+    throw Error("incomes aren't sourced") if income?
+    sourced = @sources.map{|source| source[:amount].abs}.reduce(:+) || 0
+    sourced >= @amount.abs
+  end
+
+  def allocated?
+    throw Error("expenses aren't allocated") if expense?
+    sourced = @allocations.map{|allocation| allocation[:amount].abs}.reduce(:+) || 0
+    sourced >= @amount.abs
   end
 
   def income?
@@ -32,12 +45,25 @@ class Transaction
     return recurrence.kind_of? Expense
   end
 
-#  def to_s
-#    "<txn: #{date} for #{self.amount}>"
-#  end
-#
-#  def inspect
-#    "<txn: #{date} for #{self.amount}, recurrence: #{@recurrence.to_s}, allocations: #{@allocations.inspect}, sources: #{@sources.inspect} spendable: #{@spendable}>"
-#  end
+  def days_til_next_income
+    @next_income.date - @date
+  end
 
+  def to_hash
+    hash = {
+      type: income? ? "income" : "expense",
+      name: @recurrence.name,
+      date: @date,
+      amount: @amount
+    }
+    if income?
+      hash[:spendable] = @spendable
+      hash[:daily_spend] = @daily_spend
+      hash[:unsmoothed_daily_spend] = @unsmoothed_daily_spend
+      hash[:allocations] = @allocations
+    elsif expense?
+      hash[:sources] = @sources
+    end
+    hash
+  end
 end

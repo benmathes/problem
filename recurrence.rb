@@ -30,7 +30,6 @@ class Recurrence
         recurrence: self,
         amount: self.amount,
         date: @schedule.start)
-      puts "   #{t.inspect}" if VERBOSE
       @transactions.push t
     elsif @schedule.type == 'MONTHLY'
       # TODO: start at start date, monthly dates afterwards
@@ -47,7 +46,6 @@ class Recurrence
             recurrence: self,
             amount: self.amount,
             date: this_transaction_date)
-          puts "   #{t.inspect}" if VERBOSE
           @transactions.push t
         end
         current = current.to_time.advance(:months => 1).to_date.change(day: 1)
@@ -60,7 +58,6 @@ class Recurrence
           recurrence: self,
           amount: self.amount,
           date: current)
-        puts "   #{t.inspect}" if VERBOSE
         @transactions.push t
         current += @schedule.period
       end
