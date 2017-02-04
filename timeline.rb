@@ -135,19 +135,21 @@ class Timeline
 
 
   def chart!
-    return
     g = Gruff::Line.new
     g.title = 'spendable over time'
 
-    spendable = []
-    prior = 0
-    flattened.select{ |txn| txn.income? }.each do |income|
-      spendable.push [income.date.to_time.to_i, prior]
-      spendable.push [income.date.to_time.to_i, income.spendable]
-      prior = income.spendable
+    series = {}
+    [:unsmoothed, :daily_spend].each do |attr|
+      prior = 0
+      series[attr] = []
+      flattened.select{ |txn| txn.income? }.each do |income|
+        series[attr].push [income.date.to_time.to_i, prior]
+        series[attr].push [income.date.to_time.to_i, income.try(attr)]
+        prior = income.try(attr)
+      end
+      g.dataxy attr, series[attr]
     end
 
-    g.dataxy :spendable, spendable
 
     g.write 'charts.png'
   end
@@ -207,13 +209,71 @@ class Timeline
         end
       end
     end
-    @planned = reversed.reverse
+    return flattened
   end
 
 
   def plan_daily_spend!
+    # go forward through time, checking how much
+    # of a paycheck is unallocated (Transaction#spendable),
+    # and spread it forward until next income. If next income
+    # is less, spreads all past income forward so daily spend
+    # is non-decreasing over entire time period.
+    # ASSUMPTION: Timeline#plan! already run.
 
+    # first pass, calc daily spend between days with income, no smoothing.
+    @timeline.each_with_index do |txns, i|
+      next if txns.nil? || txns.length == 0
+      days_income = txns.select(&:income?)
+      # spendable_income_on_day = days_income.map(&:spendable).reduce(&:+)
+
+      # now find next day w/ income.
+      days_between = 1 # default 1 in case income on last day, numerator in avg spend per day.
+      @timeline[i+1..-1].each_with_index do |future_txns, j|
+        if !future_txns.nil? && future_txns.select(&:income?).length > 0
+          days_between = j - i
+          break
+        end
+      end
+
+      # this is the 'allowable' (unsmoothed) spend we have on this day,
+      # may be more than one income source.
+      days_income.each do |income|
+        income.unsmoothed_daily_spend = income.spendable / days_between
+      end
+    end
+
+    # TODO: maybe do the smoothing in the same loop as calc'ing spend/day
+
+    infinite_guard = 0
+    no_smoothing_left = false
+    while !no_smoothing_left do
+      infinite_guard += 1
+      @timeline.each_with_index do |txns, i|
+
+        # use loop starting from smoothed daily spend. backpointer day 1
+        # init (or || ) smoothed daily spend as unsmoothed
+        # on next day of income, if daily spend is higher,
+        # don't smooth. move back-pointer to today
+        # if on next day of income daily is lower, find next next day
+        # and smooth.
+        # repeat loop until no smoothing done.
+        unsmoothed_daily_spend = txns.select(&:income?).map(&:unsmoothed_daily_spend)
+        next unless income.income?
+
+        prior_smooth_days = @planned[smooth_end].date - @planned[smooth_start].date
+        prior_smooth_amount = @planned[smooth_end] - @planned[smooth_start]
+
+        if income.unsmoothed_daily_spend > next_income.unsmoothed_daily_spend
+          local_smooth = ((income.daily_spend + next_income.daily_spend) /
+                          (income.days_til_next_income + next_income.days_til_next) )
+        end
+      end
+      raise Error("infinute loop") if infinite_guard > 9999
+    end
+    #    when unsmoothed drops from past unsmoothed to ?
+    #    calc new smooth
+    #    if prev smooth is higher than new smooth, smooth forward prev, set new "prev smooth" boundary"
   end
-
 
 end

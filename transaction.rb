@@ -1,6 +1,13 @@
-# A transaction.
-# belongs to a recurrence and timeline
 class Transaction
+  # A transaction.
+  # belongs to a recurrence and timeline
+  # TODO: either transactions be subclassed into Transaction::Income and
+  # Transaction::Expense, or Recurrence::Income and Recurrence::Expense shouldn't exist
+  # either consistently live in the higher level of abstraction: recurrence-<transaction
+  # or in lower level of income/expense sources -< income/expense transactions
+  # This comes up is, e.g. Transaction#sourced? and Transaction#allocated?, where
+  # I have re-implemented partial type checking.
+
   attr_accessor :timeline, :recurrence, :amount, :date, :sources, :allocations, :spendable,
                 :unsmoothed_daily_spend, :daily_spend, :next_income
   def initialize(timeline:, recurrence:, amount:, date:)

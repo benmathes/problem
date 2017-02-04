@@ -81,19 +81,29 @@ describe Timeline do
 
   describe "allocations" do
     it "all expenses sourced" do
-      @timeline.flattened.select{|txn| txn.expense? }.each do |expense|
+      @timeline.flattened.select(&:expense?).each do |expense|
         assert_equal expense.sourced, expense.amount.abs
       end
     end
 
     it "no income over-allocated" do
-      @timeline.flattened.select{|txn| txn.income? }.each do |income|
+      @timeline.flattened.select(&:income?).each do |income|
         assert(
           income.allocated < income.amount.abs,
           "cannot allocate more than income amount"
         )
       end
     end
+  end
 
+  describe "smoothing" do
+    it "daily smoothed spending should be non-decreasing" do
+      previous_daily_spend = 0
+      @timeline.each do |day_txns|
+        daily_spend_from_day = day_txns.select(&:income?).map(&:daily_spend).reduce(&:+)
+        assert previous_daily_spend <= daily_spend_from_day
+        previous_daily_spend = daily_spend_from_day
+      end
+    end
   end
 end
