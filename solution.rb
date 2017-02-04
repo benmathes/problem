@@ -22,7 +22,9 @@ require './transaction'
 
 timeline = Timeline.new(
   incomes: input["incomes"],
-  expenses: input["expenses"]
+  expenses: input["expenses"],
+  start_date: START_DATE,
+  end_date: END_DATE,
 )
 
 unless timeline.solvent?
@@ -30,5 +32,7 @@ unless timeline.solvent?
 else
   result = { events: timeline.plan!.map{|event| event.to_hash } }
 end
+
+timeline.chart!
 
 puts result.to_json

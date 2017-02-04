@@ -1,4 +1,4 @@
-### Overview
+## Overview
 
 * `solution.rb` is a wrapping script
 * `timeline.rb` is the `Timeline` class, where the meat of the algorithm lives
@@ -13,7 +13,12 @@
 * Your initial estimate of 2-3 hours seems awfully optimistic given (1) setting up scaffolding, (2) writing tests, (3) complexity of smoothing, etc.
 * maybe I'm slow? My strengths are in initial problem understanding/sketching of solutions. Bit-bumming (e.g. off-by-one errors) is not my strong point.
 
-### Running
+
+## Suggestions
+
+* instead of passing in the json as raw `STDIN`, pass a json filename as a command line argument. If the script uses STDIN at all. Shouldn't make a big difference, but turned out to break ruby debugging.
+
+## Running
 
 Rather than have `run.sh` install ruby version managers, package managers, etc. without your consent, here are instructions:
 
@@ -27,3 +32,14 @@ Then you can run `run.sh`, e.g.
 * `run.sh < simple.input.json`
 * `run.sh < complex.input.json`
 * `run.sh < insolvent.input.json`
+
+
+### Tests
+
+run `ruby -Ilib:test tests.rb`
+
+### Extra Credit
+
+I wanted to _see_ what the smoothing looked like, so I used a ruby gem that outputs chart images: https://github.com/topfunky/gruff
+
+running `./run.sh` outputs `charts.png`

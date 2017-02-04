@@ -10,18 +10,28 @@ class Transaction
     @date = date
     @sources = []
     @allocations = []
-    @spendable = nil
     @daily_spend = nil
+    @spendable = nil
     @unsmoothed_daily_spend = nil
   end
 
+  def spendable
+    @spendable.nil? ? @amount : @spendable
+  end
+
   def unallocated
-    allocated = @allocations.map{|allocation| allocation[:amount].abs}.reduce(:+) || 0
     @amount.abs - allocated
   end
 
+  def allocated
+    @allocations.map{|allocation| allocation[:amount].abs}.reduce(:+) || 0
+  end
+
+  def sourced
+    @sources.map{|source| source[:amount].abs}.reduce(:+) || 0
+  end
+
   def unsourced
-    sourced = @sources.map{|source| source[:amount].abs}.reduce(:+) || 0
     @amount.abs - sourced
   end
 
@@ -57,7 +67,7 @@ class Transaction
       amount: @amount
     }
     if income?
-      hash[:spendable] = @spendable
+      hash[:spendable] = spendable
       hash[:daily_spend] = @daily_spend
       hash[:unsmoothed_daily_spend] = @unsmoothed_daily_spend
       hash[:allocations] = @allocations

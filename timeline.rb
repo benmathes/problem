@@ -1,24 +1,21 @@
-# A Timeline
-# has many incomes, expenses
-# stores an internal timeline, generated from the periodic incomes/expenses
-# answers questions like: is is solvent? What's the daily allowable spending money?
-class Timeline
-  attr_accessor :incomes, :expenses, :timeline, :start, :end, :stats
+require 'gruff'
 
-  def initialize(incomes:, expenses:)
+class Timeline
+  # A Timeline
+  # has many incomes, expenses
+  # stores an internal timeline, generated from the periodic incomes/expenses
+  # answers questions like: is is solvent? What's the daily allowable spending money?
+
+  attr_accessor :incomes, :expenses, :timeline, :start_date, :end_date, :stats
+
+  def initialize(incomes:, expenses:, start_date:, end_date:)
     @stats = {
-      income: {
-        total: nil,
-        avg: nil
-      },
-      expenses: {
-        total: nil,
-        avg: nil
-      }
+      income: { total: nil, avg: nil },
+      expenses: { total: nil, avg: nil }
     }
     @solvent = nil
-    @start = START_DATE
-    @end = END_DATE
+    @start_date = start_date
+    @end_date = end_date
     @incomes = incomes.map do |income|
       Income.new(
         timeline: self,
@@ -39,19 +36,19 @@ class Timeline
     @planned = []
   end
 
-  def generate
+  def generate(force: false)
     # @timeline is an array indexed on day of the year
     # where we will mark all the incomes/expenses.
     # As per problem definition, incomes go before expenses on a day
     # e.g. @timeline[0] = [income, expense]
     # TODO: make this a sparse-er data store.
-    return @timeline unless @timeline.nil?
+    return @timeline if !@timeline.nil? && !force
     @timeline = []
 
     # TODO: we put income before expenses on each day on purpose. That's part of the assumption.
     # a less brittle approach would be to enforce the order in some kind of date.get_transactions()
     @incomes.each do |income|
-      transactions = income.transactions(timeline_start: self.start, timeline_end: self.end)
+      transactions = income.transactions(timeline_start: self.start_date, timeline_end: self.end_date)
       transactions.each do |transaction|
         if @timeline[transaction.date.yday].nil?
           @timeline[transaction.date.yday] = []
@@ -60,7 +57,7 @@ class Timeline
       end
     end
     @expenses.each do |expense|
-      transactions = expense.transactions(timeline_start: self.start, timeline_end: self.end)
+      transactions = expense.transactions(timeline_start: self.start_date, timeline_end: self.end_date)
       transactions.each do |transaction|
         if @timeline[transaction.date.yday].nil?
           @timeline[transaction.date.yday] = []
@@ -75,7 +72,7 @@ class Timeline
   # returns the flattened list of transactions for the year,
   # removing nil days (i.e. no transactions)
   # e.g. [[income, expense], nil, [income]] -> [income, expense, income]
-  def flattened
+  def flattened(force: true)
     return @flattened unless @flattened.nil?
     @flattened = []
     @timeline.each do |days_transactions|
@@ -107,9 +104,9 @@ class Timeline
       end
     end
     @stats[:income][:total] = total_income
-    @stats[:income][:avg] = total_income/(@end - @start - 1)
+    @stats[:income][:avg] = total_income/(@end_date - @start_date - 1)
     @stats[:expenses][:total] = total_expenses
-    @stats[:expenses][:avg] = total_expenses/(@end - @start - 1)
+    @stats[:expenses][:avg] = total_expenses/(@end_date - @start_date - 1)
     @stats[:avg] = @stats[:income][:avg] - @stats[:expenses][:avg]
     @solvent = true if @solvent.nil?
   end
@@ -136,6 +133,25 @@ class Timeline
     return @planned
   end
 
+
+  def chart!
+    return
+    g = Gruff::Line.new
+    g.title = 'spendable over time'
+
+    spendable = []
+    prior = 0
+    flattened.select{ |txn| txn.income? }.each do |income|
+      spendable.push [income.date.to_time.to_i, prior]
+      spendable.push [income.date.to_time.to_i, income.spendable]
+      prior = income.spendable
+    end
+
+    g.dataxy :spendable, spendable
+
+    g.write 'charts.png'
+  end
+
   private
 
   def allocate!
@@ -151,7 +167,7 @@ class Timeline
       next unless expense.expense?
       puts "finding source for #{expense.recurrence.name} on #{expense.date}. #{expense.unsourced} of #{expense.amount.abs} unsourced" if VERBOSE
 
-      # go back in time to find the covering income
+      # go back in time to find the closest covering incomes
       reversed[i..-1].each_with_index do |income|
         break if expense.sourced?
         # actually iterating over all txns, but only care about expenses.
@@ -181,8 +197,9 @@ class Timeline
           date: income.date,
           amount: allocation_amount
         })
+
         # after allocationg the prior txn, bring down spendable
-        income.spendable = (income.spendable || income.amount) - allocation_amount
+        income.spendable = income.spendable - allocation_amount
 
         # if we are solvent this shouldn't happen -- sanity check
         if income.spendable < 0

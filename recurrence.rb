@@ -1,3 +1,4 @@
+
 # A recurrence.
 # has one Schedule
 # has many Transactions
@@ -13,7 +14,7 @@ class Recurrence
       recurrence: self,
       type: schedule["type"],
       period: schedule["period"],
-      start: schedule["start"] || timeline.start,
+      start: schedule["start"] || timeline.start_date,
       days: schedule["days"]
     )
   end
@@ -22,7 +23,6 @@ class Recurrence
   # only does this once, then returns the cached transactions
   # if already done
   def transactions(timeline_start:, timeline_end:)
-    return @transactions if !@transactions.nil?
     @transactions = []
     if @schedule.type == 'ONE_TIME'
       t = Transaction.new(
@@ -36,7 +36,8 @@ class Recurrence
       current = @schedule.start
       while current < timeline_end
         start_of_month = current.change(day: 1)
-        @schedule.days.each do |day_of_month|
+        days = @schedule.days.respond_to?(:each) ? @schedule.days : [@schedule.days]
+        days.each do |day_of_month|
           # edge case: start date of monthly > 1st day of month.
           # e.g. days [1,15], but start date 2016-2-3
           this_transaction_date = start_of_month + day_of_month - 1
