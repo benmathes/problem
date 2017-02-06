@@ -42,7 +42,7 @@ class Timeline
   def generate(force: false)
     # @days is an array indexed on day of the year
     # where we will mark all the incomes/expenses.
-    # TODO: make this a sparse-er data store.
+    # TODO: make this a sparse-er data store, e.g. a linked list or sparse array
     return @days if !@days.nil? && !force
     @days = []
     @incomes.concat(@expenses).each do |recurrence|
@@ -119,6 +119,9 @@ class Timeline
     "<Timeline, #{@stats}>"
   end
 
+  def income_days
+    days.reject{|d| d.nil? || d.incomes.length == 0}
+  end
 
   def plan!
     allocate!
@@ -132,7 +135,7 @@ class Timeline
     g.title = 'spendable over time'
 
     series = {}
-    [:unsmoothed_spendable, :smoothed_spendable].each do |attr|
+    [:unsmoothed_daily_spendable, :smoothed_daily_spendable].each do |attr|
       prior = 0
       series[attr] = []
       days.each do |day|
@@ -213,82 +216,111 @@ class Timeline
 
 
   def plan_daily_spend!
+    # ASSUMPTION: Timeline#allocate! already run. this method private to ensure
     # go forward through time, checking how much
     # of a paycheck is unallocated (Transaction#spendable),
     # and spread it forward until next income. If next income
     # is less, spreads all past income forward so daily spend
-    # is non-decreasing over entire time period.
-    # ASSUMPTION: Timeline#plan! already run.
+    # is non-decreasing over entire timeline.
 
     # first pass, calc daily spend between days with income, no smoothing.
     @days.each_with_index do |day, i|
       next if day.nil? || day.incomes.length == 0
-
-      # now find next day w/ income.
       # default days_between is 1 in case income on last day,
-      # denominator in avg spend per day. (prevent divide-by-zero)
+      # denominator in avg spend per day. (prevent divide-by-zero). or:
+      # the identity unit in integers under mult/division is 1, not 0 like
+      # addition (groups/rings/fields)
       next_day = next_income_day(i)
       days_between =  next_day.nil? ? 1 : next_day.date - day.date
-
-      # this is the unallocated capital for each (unsmoothed) income txn
       day.incomes.each do |income|
-        income.unsmoothed_daily_spend = income.spendable / days_between
+        income.unsmoothed_daily_spendable = income.spendable / days_between
       end
-      day.unsmoothed_spendable = day.incomes.map(&:unsmoothed_daily_spend).reduce(&:+)
     end
 
     # TODO: smooth in the same loop as calc'ing spend/day?
     infinite_guard = 0
-    still_smoothing = true
-    while still_smoothing do
-      infinite_guard += 1
+    loop do
+      still_smoothing = false
+      # managing loop variables outside since ruby does not persist changes to
+      # iteration variables in multiple runs of the loop.
       i_smooth_window_start = 0
+      puts "new full smooth pass:" if VERBOSE
       while i_smooth_window_start < @days.length
-        # inner loop that goes forward through time until we
-        # hit a daily spend that goes up (i.e. no need to
-        # push forward income up to this point). Smooth up
-        # to end of inner day, e.g.
+        window_start_day = @days[i_smooth_window_start]
+        next if window_start_day.nil? || window_start_day.incomes.length == 0
+        # inner loop that goes forward through time until we hit a daily spend that goes up
+        # (i.e. no need to push forward income up to this point). Smooth up to end of inner day, e.g.
         #   __
-        # _|  |__     ______
-        #        |___|
+        # _|  |__      ______
+        #        |____|
         #---------------------
-        #   ^________^
+        #  ^__________^
         #    1 window
-        smooth_window_daily_spendable = 0
+        if window_start_day.next_income_day.nil?
+          # if done with inner loop and ended at end of timeline,
+          # break to outer global smoothing loop
+          break
+        end
+
+        puts "  new local smooth: start #{window_start_day.date}" if VERBOSE
         i_inner_day = i_smooth_window_start
         while i_inner_day < @days.length
           inner_day = @days[i_inner_day]
           next if inner_day.nil? || inner_day.incomes.length == 0
 
-          daily_spendable = days_income.map do |income|
-            # multiple smoothing passes, default to prior smoothing, but
-            # if that doesn't exist, use unsmoothed
-            income.smoothed_daily_spend || income.unsmoothed_daily_spend
+          puts "    local smooth: start #{window_start_day.date}, inner: #{inner_day.date}" if VERBOSE
+          # since multiple outer smoothing passes, default to prior smoothing, but
+          # if that doesn't exist, use unsmoothed.
+          current_smoothed_daily_spendable = (window_start_day.smoothed_daily_spendable || window_start_day.unsmoothed_daily_spendable)
+          next_smoothed_daily_spendable = (inner_day.smoothed_daily_spendable || inner_day.unsmoothed_daily_spendable)
+
+          if current_smoothed_daily_spendable > next_smoothed_daily_spendable
+            still_smoothing = true
+            # next is lower: push income forward, i.e. local smoothing
+            days_up_to_now = inner_day.date - window_start_day.date
+            total_smooth_spend_to_now = current_smoothed_daily_spendable * days_up_to_now
+            total_smooth_spend_next = next_smoothed_daily_spendable * inner_day.days_til_next_income
+            num_smooth_days = days_up_to_now + inner_day.days_til_next_income
+            new_smoothed_daily_spendable = (total_smooth_spend_to_now + total_smooth_spend_next) / num_smooth_days
+            # have to loop through whole window to update (TODO: do I?). sloow. O(n^2)
+            back_propagate_day = window_start_day
+            while back_propagate_day.date != inner_day.date
+              back_propagate_day.smoothed_daily_spendable = new_smoothed_daily_spendable
+              back_propagate_day = back_propagate_day.next_income_day
+            end
+            # inner loop iteration step.
+            if inner_day.next_income_day.nil?
+              # end of timeline, back to start for another global smooth pass
+              i_inner_day = @days.length
+              i_smooth_window_start = @days.length
+            else
+              i_inner_day = inner_day.next_income_day.timeline_index
+            end
+            puts "      down: #{current_smoothed_daily_spendable}/day, #{days_up_to_now}d -> #{next_smoothed_daily_spendable}/day, #{inner_day.days_til_next_income}d, new: #{new_smoothed_daily_spendable}/day for #{num_smooth_days}d" if VERBOSE
+          elsif current_smoothed_daily_spendable <= next_smoothed_daily_spendable
+            # next is higher: done smoothing to here. pull outer window forward
+            puts "      up: #{current_smoothed_daily_spendable} < #{next_smoothed_daily_spendable}/day. moving smooth_window_start to #{inner_day.date}" if VERBOSE
+            i_smooth_window_start = inner_day.timeline_index
+            current_smoothed_daily_spendable = next_smoothed_daily_spendable
+            break
           end
-
-          smooth_window = @days[i_smooth_window_start]
-          if daily_spendable >= smooth_window_daily_spendable
-            day = inner_day
-          end
-
-          # have to loop through whole window to update (TODO: do I?). sloow. O(n^2)
-          inner_day += 1
-
-          # cases:
-          # next is lower: push income forward (this is 'smoothing')
-          # next is higher: reset up.
-          # next is same: reset pointers
-
         end
-
-        i_smooth_window_start += 1
       end
       # TODO: a little hack-y to prevent infinite looping like this.
-      raise Error("infinute loop") if infinite_guard > 9999
-    end
-    #    when unsmoothed drops from past unsmoothed to ?
-    #    calc new smooth
-    #    if prev smooth is higher than new smooth, smooth forward prev, set new "prev smooth" boundary"
-  end
+      infinite_guard += 1
+      raise "infinite loop" if infinite_guard > 9999
 
+      i_smooth_window_start += 1
+      break unless !still_smoothing
+    end
+
+    # TODO: calculated spend for days, spread to incomes on those days
+  end
+end
+
+
+class Float
+  def to_s
+    return self.round(2).inspect
+  end
 end

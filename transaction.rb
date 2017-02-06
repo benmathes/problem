@@ -9,7 +9,7 @@ class Transaction
   # I have re-implemented partial type checking.
 
   attr_accessor :timeline, :recurrence, :amount, :date, :sources, :allocations, :spendable,
-                :unsmoothed_daily_spend, :smoothed_daily_spend, :next_income
+                :unsmoothed_daily_spendable, :smoothed_daily_spendable, :next_income
   def initialize(timeline:, recurrence:, amount:, date:)
     @timeline = timeline
     @amount = amount
@@ -18,8 +18,8 @@ class Transaction
     @sources = []
     @allocations = []
     @spendable = nil
-    @smoothed_daily_spend = nil
-    @unsmoothed_daily_spend = nil
+    @smoothed_daily_spendable = nil
+    @unsmoothed_daily_spendable = nil
   end
 
 
@@ -94,8 +94,8 @@ class Transaction
     }
     if income?
       hash[:spendable] = spendable
-      hash[:smoothed_daily_spend] = @smoothed_daily_spend
-      hash[:unsmoothed_daily_spend] = @unsmoothed_daily_spend
+      hash[:smoothed_daily_spendable] = @smoothed_daily_spendable
+      hash[:unsmoothed_daily_spendable] = @unsmoothed_daily_spendable
       hash[:allocations] = @allocations
     elsif expense?
       hash[:sources] = @sources

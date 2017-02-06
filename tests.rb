@@ -101,8 +101,8 @@ describe Timeline do
       previous_daily_spend = 0
       @timeline.days.each do |day|
         next if day.nil?
-        assert previous_daily_spend <= day.smoothed_spendable
-        previous_daily_spend = day.smoothed_spendable
+        assert previous_daily_spend <= day.smoothed_daily_spendable
+        previous_daily_spend = day.smoothed_daily_spendable
       end
     end
 

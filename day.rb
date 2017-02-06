@@ -1,15 +1,16 @@
 class Day
   # a day of transactions
-  attr_accessor :timeline, :txns, :unsmoothed_spendable, :smoothed_spendable,
-                :next_income_day, :next_expense_day, :date, :timeline_index
+  attr_accessor :timeline, :txns, :unsmoothed_daily_spendable, :smoothed_daily_spendable,
+                :next_income_day, :next_expense_day, :date, :timeline_index, :unsmoothed_spendable
 
   def initialize(timeline:, timeline_index:, date:, txns: [])
     @timeline = timeline
     @timeline_index = timeline_index
     @date = date
     @_txns = txns
+    @unsmoothed_daily_spendable = nil
+    @smoothed_daily_spendable = nil
     @unsmoothed_spendable = nil
-    @smoothed_spendable = nil
     @next_income_day = nil
     @next_expense_day = nil
     @_looked_for_next_income = false
@@ -26,6 +27,28 @@ class Day
   end
 
 
+  # warning: implicit cache. if a day's daily spendable changes,
+  # the day's value will be out of date.
+  def unsmoothed_daily_spendable
+    if @unsmoothed_daily_spendable.nil?
+      @unsmoothed_daily_spendable = incomes.map(&:unsmoothed_daily_spendable).compact.reduce(&:+)
+    else
+      @unsmoothed_daily_spendable
+    end
+  end
+
+
+  # warning: implicit cache. if a day's daily spendable changes,
+  # the day's value will be out of date.
+  def smoothed_daily_spendable
+    if @smoothed_daily_spendable.nil?
+      @smoothed_daily_spendable = incomes.map(&:smoothed_daily_spendable).compact.reduce(&:+)
+    else
+      @smoothed_daily_spendable
+    end
+  end
+
+
   def next_income_day
     return @next_income_day if @_looked_for_next_income
     @_looked_for_next_income = true
@@ -37,6 +60,15 @@ class Day
       end
     end
     @next_income_day = nil
+  end
+
+
+  def days_til_next_income
+    if next_income_day.nil?
+      timeline.end_date - date
+    else
+      next_income_day.date - date
+    end
   end
 
 
@@ -59,12 +91,12 @@ class Day
 
 
   def inspect
-    "<Day #incomes: #{incomes.length}, #expenses: #{expenses.length}>"
+    to_s
   end
 
 
   def to_s
-    "<Day #incomes: #{incomes.length}, #expenses: #{expenses.length}>"
+    "<Day date: #{date}, next_income_date: #{next_income_day.try(:date)}, smoothed daily:#{smoothed_daily_spendable}, #incomes: #{incomes.length}, #expenses: #{expenses.length}>"
   end
 
 end
