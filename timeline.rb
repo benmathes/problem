@@ -144,7 +144,7 @@ class Timeline
       @chart_series.keys[0],
       @chart_series.keys[(@chart_series.length/2).floor],
       @chart_series.keys[-1]
-    ].each do |name|
+    ].compact.each do |name|
       g.dataxy name, @chart_series[name]
     end
     g.write "charts.png"

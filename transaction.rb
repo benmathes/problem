@@ -81,7 +81,7 @@ class Transaction
       amount: @amount
     }
     if income?
-      hash[:spendable] = spendable
+      hash[:spendable] = @smoothed_daily_spendable
       hash[:smoothed_daily_spendable] = @smoothed_daily_spendable
       hash[:unsmoothed_daily_spendable] = @unsmoothed_daily_spendable
       hash[:allocations] = @allocations

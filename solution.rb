@@ -43,8 +43,7 @@ else
   else
     result = { events: timeline.flattened.map{|event| event.to_hash } }
   end
+  timeline.chart!
 end
-
-timeline.chart!
 
 puts result.to_json

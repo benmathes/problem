@@ -2,7 +2,7 @@
 
 * `solution.rb` is a wrapping script
 * `timeline.rb` is the `Timeline` class, where the meat of the algorithm lives
-* `recurrence.rb`, `transaction.rb`, `schedule.rb` contain classes for the first class objects in the system.
+* `recurrence.rb`, `transaction.rb`, `schedule.rb`, `day.rb` contain classes for the first class objects in the system.
 
 
 ## Commentary
