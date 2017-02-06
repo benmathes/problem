@@ -102,11 +102,11 @@ describe Timeline do
         assert !day.smoothed_daily_spendable.nil?
       end
     end
+
     it "daily smoothed spending should be non-decreasing" do
-      previous_daily_spend = 0
+      previous_daily_spend = @timeline.income_days[0].smoothed_daily_spendable
       @timeline.income_days.each do |day|
-        next if day.nil?
-        assert previous_daily_spend <= day.smoothed_daily_spendable
+        assert previous_daily_spend <= day.smoothed_daily_spendable + Timeline::SMOOTHING_FUZZINESS
         previous_daily_spend = day.smoothed_daily_spendable
       end
     end

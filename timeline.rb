@@ -250,11 +250,12 @@ class Timeline
       days_between =  next_day.nil? ? 1 : next_day.date - day.date
       day.incomes.each do |income|
         income.unsmoothed_daily_spendable = income.spendable / days_between
+        # also init the smoothed amount to unsmoothed, which will be smoothed later
+        income.smoothed_daily_spendable = income.unsmoothed_daily_spendable
       end
     end
 
     add_chart_series!(name: "unsmoothed", attr: :unsmoothed_daily_spendable)
-
     # TODO: smooth in the same loop as calc'ing spend/day?
     infinite_guard = 0
     loop do
@@ -293,8 +294,8 @@ class Timeline
           #  next
           #end
 
-          current_smoothed_daily_spendable = (window_start_day.smoothed_daily_spendable || window_start_day.unsmoothed_daily_spendable)
-          next_smoothed_daily_spendable = (local_day.smoothed_daily_spendable || local_day.unsmoothed_daily_spendable)
+          current_smoothed_daily_spendable = window_start_day.smoothed_daily_spendable
+          next_smoothed_daily_spendable = local_day.smoothed_daily_spendable
 
           smooth_threshold = SMOOTHING_FUZZINESS + next_smoothed_daily_spendable
           if current_smoothed_daily_spendable > smooth_threshold
