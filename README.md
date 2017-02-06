@@ -40,14 +40,14 @@ Possible I misread. But here's where I think it can be more clear:
 {
   "days": [
     {
-      date: '2016-1-15',
+      date: "2016-1-15",
       daily_spendable: 12.50,
       incomes: [
         {
             "type": "income",
             "name": "Starbucks",
             "date": "2016-01-15",
-            "amount": 300
+            "amount": 300,
             "daily_spendable": 10.00,
             "allocations": [
                 {
