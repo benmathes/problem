@@ -102,5 +102,6 @@ run `ruby -Ilib:test tests.rb`
 ### Extra Credit
 
 I wanted to _see_ what the smoothing looked like, so I used a ruby gem that outputs chart images: https://github.com/topfunky/gruff
+![example chart](https://github.com/benmathes/problem/blob/master/example_chart.png)
 
 running `./run.sh` outputs `charts.png`
