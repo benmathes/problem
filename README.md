@@ -19,7 +19,7 @@
 ## where to improve:
 
 * smoothing algo (`Timline#plan_daily_spend`): I'll use the "pushing snow around" analogy to the graph of daily spendable. My code pushes the snow forward through time, e.g.
-  * <img to go here>
+  * ![sketch of algorithm smoothing windows](https://github.com/benmathes/problem/blob/master/sketch_example.jpg)
   * but this requires multiple loops. I can imagine starting from the end and pulling snow forward instead of pushing from the start might not require the outer and inner smoothing loop.
   * A lot of pointers from smoothing windows could be preserved as shortcuts to prevent hidden loops, e.g. storing smoothing window start/end, instead of traversing the full list of income days each time.
 
@@ -72,7 +72,7 @@ Possible I misread. But here's where I think it can be more clear:
         },
         ...
       ],
-      expenses: [...],
+      "expenses": [...],
     },
   ]
 }
