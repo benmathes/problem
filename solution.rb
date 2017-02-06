@@ -15,7 +15,7 @@ END_DATE = Date.parse('2017-01-01')
 VERBOSE = opts.verbose? || false
 
 puts "reading file..." if VERBOSE
-fileText =  STDIN.read
+fileText = STDIN.read
 
 puts "parsing file..." if VERBOSE
 input = JSON.parse(fileText)

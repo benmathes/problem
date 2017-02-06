@@ -55,11 +55,13 @@ describe Timeline do
     @timeline.plan!
   end
 
+
   describe "timeline generation" do
     it "should have correct # of transactions" do
       assert_equal 8, @timeline.flattened.length
     end
   end
+
 
   describe "solvency" do
     it "should detect solvency" do
@@ -79,6 +81,7 @@ describe Timeline do
     end
   end
 
+
   describe "allocations" do
     it "all expenses sourced" do
       @timeline.flattened.select(&:expense?).each do |expense|
@@ -96,7 +99,18 @@ describe Timeline do
     end
   end
 
+
   describe "smoothing" do
+
+    def assert_smoothed(timeline = nil)
+      timeline ||= @timeline
+      previous_daily_spend = timeline.income_days[0].smoothed_daily_spendable
+      timeline.income_days.each do |day|
+        assert previous_daily_spend <= day.smoothed_daily_spendable + Timeline::SMOOTHING_FUZZINESS
+        previous_daily_spend = day.smoothed_daily_spendable
+      end
+    end
+
     it "daily smoothed spending should be present for all days with income" do
       @timeline.income_days.each do |day|
         assert !day.smoothed_daily_spendable.nil?
@@ -104,18 +118,146 @@ describe Timeline do
     end
 
     it "daily smoothed spending should be non-decreasing" do
-      previous_daily_spend = @timeline.income_days[0].smoothed_daily_spendable
-      @timeline.income_days.each do |day|
-        assert previous_daily_spend <= day.smoothed_daily_spendable + Timeline::SMOOTHING_FUZZINESS
-        previous_daily_spend = day.smoothed_daily_spendable
-      end
+      assert_smoothed
     end
 
-	# todo: decreasing unsmoothed daily spend
+    it "should work with decreasing unsmoothed daily spend" do
+      json_incomes = [
+        {
+          "name" => "Walmart", "amount" => 10, "schedule" => {
+            "type" => "MONTHLY",
+            "days" => [1, 5, 10]
+          }
+        },
+      ]
+      json_expenses = [
+        {
+          "name" => "cost1", "amount" => 1, "schedule" => {
+            "type" => "ONE_TIME",
+            "start" => "2016-01-03"
+          }
+        },
+        {
+          "name" => "cost2", "amount" => 3, "schedule" => {
+            "type" => "ONE_TIME",
+            "start" => "2016-01-07"
+          }
+        },
+        {
+          "name" => "cost3", "amount" => 5, "schedule" => {
+            "type" => "ONE_TIME",
+            "start" => "2016-01-17"
+          }
+        },
+      ]
+      timeline = Timeline.new(
+        incomes: json_incomes,
+        expenses: json_expenses,
+        start_date: Date.parse('2016-1-1'),
+        end_date: Date.parse('2016-2-1')
+      )
+      timeline.plan!
+      assert timeline.solvent?
+      assert_smoothed(timeline)
+    end
 
-	# todo: increasing unsmoothed daily spend
+    it "should work with increasing unsmoothed daily spend" do
+      json_incomes = [
+        {
+          "name" => "Walmart", "amount" => 10, "schedule" => {
+            "type" => "MONTHLY",
+            "days" => [1, 5, 10]
+          }
+        },
+      ]
+      json_expenses = [
+        {
+          "name" => "cost1", "amount" => 5, "schedule" => {
+            "type" => "ONE_TIME",
+            "start" => "2016-01-03"
+          }
+        },
+        {
+          "name" => "cost2", "amount" => 3, "schedule" => {
+            "type" => "ONE_TIME",
+            "start" => "2016-01-07"
+          }
+        },
+        {
+          "name" => "cost3", "amount" => 1, "schedule" => {
+            "type" => "ONE_TIME",
+            "start" => "2016-01-17"
+          }
+        },
+      ]
+      timeline = Timeline.new(
+        incomes: json_incomes,
+        expenses: json_expenses,
+        start_date: Date.parse('2016-1-1'),
+        end_date: Date.parse('2016-2-1')
+      )
+      timeline.plan!
+      assert timeline.solvent?
+      assert_smoothed(timeline)
+    end
 
-	# todo: cascading-down sets of decreasing unsmoothed daily spend
+    it "cascading-down sets of decreasing unsmoothed daily spend" do
+      json_incomes = [
+        {
+          "name" => "Walmart", "amount" => 200, "schedule" => {
+            "type" => "MONTHLY",
+            "days" => 1
+          }
+        },
+      ]
+      json_expenses = [
+        {
+          "name" => "cost1", "amount" => 10, "schedule" => {
+            "type" => "ONE_TIME",
+            "start" => "2016-01-03"
+          }
+        },
+        {
+          "name" => "cost2", "amount" => 30, "schedule" => {
+            "type" => "ONE_TIME",
+            "start" => "2016-01-07"
+          }
+        },
+        {
+          "name" => "cost3", "amount" => 50, "schedule" => {
+            "type" => "ONE_TIME",
+            "start" => "2016-01-17"
+          }
+        },
+        {
+          "name" => "cost4", "amount" => 20, "schedule" => {
+            "type" => "ONE_TIME",
+            "start" => "2016-02-03"
+          }
+        },
+        {
+          "name" => "cost5", "amount" => 40, "schedule" => {
+            "type" => "ONE_TIME",
+            "start" => "2016-02-07"
+          }
+        },
+        {
+          "name" => "cost6", "amount" => 60, "schedule" => {
+            "type" => "ONE_TIME",
+            "start" => "2016-03-17"
+          }
+        },
+      ]
+      timeline = Timeline.new(
+        incomes: json_incomes,
+        expenses: json_expenses,
+        start_date: Date.parse('2016-1-1'),
+        end_date: Date.parse('2016-3-1')
+      )
+      timeline.plan!
+      assert timeline.solvent?
+      assert_smoothed(timeline)
+    end
   end
 
 end
