@@ -97,9 +97,14 @@ describe Timeline do
   end
 
   describe "smoothing" do
+    it "daily smoothed spending should be present for all days with income" do
+      @timeline.income_days.each do |day|
+        assert !day.smoothed_daily_spendable.nil?
+      end
+    end
     it "daily smoothed spending should be non-decreasing" do
       previous_daily_spend = 0
-      @timeline.days.each do |day|
+      @timeline.income_days.each do |day|
         next if day.nil?
         assert previous_daily_spend <= day.smoothed_daily_spendable
         previous_daily_spend = day.smoothed_daily_spendable

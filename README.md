@@ -13,7 +13,17 @@
 * The initial estimate of 2-3 hours seems optimistic for 1k lines of commented/tested code.
 * maybe I'm slow? My strengths are in problem understanding/scoping/sketching.
 * pre primary/secondary incomes. I disregarded this. Intentionally. All income sources should be used to smooth. If this was the real world and secondary sources had more variance, that variance should be used to build predictive cuhions, but not the source of the income.
-* If you want insight into when I worked on this: https://github.com/benmathes/problem/graphs
+* to prevent unecessary precision in the smoothing, I put in a `Timeline::SMOOTHING_FUZZINESS` that is an acceptable difference of spend between days.
+
+
+## where to improve:
+
+* smoothing algo (`Timline#plan_daily_spend`): I'll use the "pushing snow around" analogy to the graph of daily spendable. My code pushes the snow forward through time, e.g.
+  * <img to go here>
+  * but this requires multiple loops. I can imagine starting from the end and pulling snow forward instead of pushing from the start might not require the outer and inner smoothing loop.
+  * A lot of pointers from smoothing windows could be preserved as shortcuts to prevent hidden loops, e.g. storing smoothing window start/end, instead of traversing the full list of income days each time.
+
+
 
 ## Suggestions
 

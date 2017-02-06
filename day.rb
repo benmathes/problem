@@ -65,7 +65,10 @@ class Day
 
   def days_til_next_income
     if next_income_day.nil?
-      timeline.end_date - date
+      # if today is the last day, actually have
+      # one day to spread the income over, this last day.
+      # prevents divide-by-zero errors
+      [timeline.end_date - date, 1].max
     else
       next_income_day.date - date
     end
@@ -97,6 +100,16 @@ class Day
 
   def to_s
     "<Day date: #{date}, next_income_date: #{next_income_day.try(:date)}, smoothed daily:#{smoothed_daily_spendable}, #incomes: #{incomes.length}, #expenses: #{expenses.length}>"
+  end
+
+  def to_hash
+    {
+      date: @date,
+      daily_spendable: @smoothed_daily_spendable,
+      unsmoothed_daily_spendable: @unsmoothed_daily_spendable,
+      incomes: incomes.map(&:to_hash),
+      expenses: expenses.map(&:to_hash)
+    }
   end
 
 end

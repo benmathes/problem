@@ -39,7 +39,7 @@ unless timeline.solvent?
 else
   timeline.plan!
   if opts.daily?
-    result = { days: timeline.days.map{ |day| day.to_hash } }
+    result = { days: timeline.days.compact.map{ |day| day.to_hash } }
   else
     result = { events: timeline.flattened.map{|event| event.to_hash } }
   end

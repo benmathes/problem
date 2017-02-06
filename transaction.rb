@@ -72,21 +72,9 @@ class Transaction
   end
 
 
-  def days_til_next_income
-    next_income.date - @date
-  end
-
-
-  def next_income
-    if @next_income.nil?
-      @next_income = timeline.next_income_day(timeline_index)
-    end
-    @next_income
-  end
-
-
   def to_hash
     hash = {
+      id: self.object_id,
       type: income? ? "income" : "expense",
       name: @recurrence.name,
       date: @date,
