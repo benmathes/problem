@@ -40,9 +40,9 @@ Possible I misread. But here's where I think it can be more clear:
 {
   "days": [
     {
-      date: "2016-1-15",
-      daily_spendable: 12.50,
-      incomes: [
+      "date": "2016-1-15",
+      "daily_spendable": 12.50,
+      "incomes": [
         {
             "type": "income",
             "name": "Starbucks",
