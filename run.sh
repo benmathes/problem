@@ -1,2 +1,2 @@
 #!/bin/bash
-bundle exec ruby solution.rb
+bundle exec ruby solution.rb "$@"

@@ -13,11 +13,62 @@
 * The initial estimate of 2-3 hours seems optimistic for 1k lines of commented/tested code.
 * maybe I'm slow? My strengths are in problem understanding/scoping/sketching.
 * pre primary/secondary incomes. I disregarded this. Intentionally. All income sources should be used to smooth. If this was the real world and secondary sources had more variance, that variance should be used to build predictive cuhions, but not the source of the income.
-* If you want insight into my work on this: https://github.com/benmathes/problem/graphs
+* If you want insight into when I worked on this: https://github.com/benmathes/problem/graphs
 
 ## Suggestions
 
+Possible I misread. But here's where I think it can be more clear:
+
 * instead of passing in the json as raw `STDIN`, pass a json filename as a command line argument. If the script uses STDIN at all. Shouldn't make a big difference, but turned out to break ruby debugging.
+* the `spendable` key in the output is a little ambiguous. While there is one sentence in the description that asks to minimize spending fluctions, there are still ambiguities.
+  * _daily_ spendable until next income?
+  * _total_ spendable until next income?
+  * _daily_ spendable until next income, _smoothed_? (from UX perspective, should be this)
+  * _total_ spendable until next income, _smoothed_? (from problem description seems like you ask for this)
+* If the user is thinking in terms of daily spendable, shouldn't the output be days, e.g.:
+```json
+{
+  "days": [
+    {
+      date: '2016-1-15',
+      daily_spendable: 12.50,
+      incomes: [
+        {
+            "type": "income",
+            "name": "Starbucks",
+            "date": "2016-01-15",
+            "amount": 300
+            "daily_spendable": 10.00,
+            "allocations": [
+                {
+                    "name": "Rent",
+                    "date": "2016-01-15",
+                    "amount": 120.00
+                }
+            ],
+        },
+        {
+            "type": "income",
+            "name": "knitting",
+            "date": "2016-01-15",
+            "daily_spendable": 2.50,
+            "allocations": [
+                {
+                    "name": "Rent",
+                    "date": "2016-01-15",
+                    "amount": 10.00
+                }
+            ],
+        },
+        ...
+      ],
+      expenses: [...],
+    },
+  ]
+}
+```
+You can see this output if you run `./run.sh [-d/--daily] < input.json`
+
 
 ## Running
 

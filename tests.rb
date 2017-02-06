@@ -99,11 +99,18 @@ describe Timeline do
   describe "smoothing" do
     it "daily smoothed spending should be non-decreasing" do
       previous_daily_spend = 0
-      @timeline.each do |day_txns|
-        daily_spend_from_day = day_txns.select(&:income?).map(&:daily_spend).reduce(&:+)
-        assert previous_daily_spend <= daily_spend_from_day
-        previous_daily_spend = daily_spend_from_day
+      @timeline.days.each do |day|
+        next if day.nil?
+        assert previous_daily_spend <= day.smoothed_spendable
+        previous_daily_spend = day.smoothed_spendable
       end
     end
+
+	# todo: decreasing unsmoothed daily spend
+
+	# todo: increasing unsmoothed daily spend
+
+	# todo: cascading-down sets of decreasing unsmoothed daily spend
   end
+
 end
