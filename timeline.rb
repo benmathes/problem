@@ -132,13 +132,14 @@ class Timeline
     g.title = 'spendable over time'
 
     series = {}
-    [:unsmoothed, :smoothed_daily_spend].each do |attr|
+    [:unsmoothed_spendable, :smoothed_spendable].each do |attr|
       prior = 0
       series[attr] = []
-      flattened.select{ |txn| txn.income? }.each do |income|
-        series[attr].push [income.date.to_time.to_i, prior]
-        series[attr].push [income.date.to_time.to_i, income.try(attr)]
-        prior = income.try(attr)
+      days.each do |day|
+        next if day.nil? || day.incomes.length == 0
+        series[attr].push [day.date.to_time.to_i, prior]
+        series[attr].push [day.date.to_time.to_i, day.try(attr)]
+        prior = day.try(attr)
       end
       g.dataxy attr, series[attr]
     end
@@ -188,15 +189,15 @@ class Timeline
         # A more-pure approach would be: have Allocation and Source as a class, which wraps
         # around the allocated/sourced Transactions. Similar to a many-to-many table in SQL
         income.allocations.push({
-                                  name: expense.recurrence.name,
-                                  date: expense.date,
-                                  amount: allocation_amount
-                                })
+          name: expense.recurrence.name,
+          date: expense.date,
+          amount: allocation_amount
+        })
         expense.sources.push({
-                               name: income.recurrence.name,
-                               date: income.date,
-                               amount: allocation_amount
-                             })
+          name: income.recurrence.name,
+          date: income.date,
+          amount: allocation_amount
+        })
 
         # after allocationg the prior txn, bring down spendable
         income.spendable = income.spendable - allocation_amount
@@ -221,7 +222,7 @@ class Timeline
 
     # first pass, calc daily spend between days with income, no smoothing.
     @days.each_with_index do |day, i|
-      next if day.nil?
+      next if day.nil? || day.incomes.length == 0
 
       # now find next day w/ income.
       # default days_between is 1 in case income on last day,
@@ -233,6 +234,7 @@ class Timeline
       day.incomes.each do |income|
         income.unsmoothed_daily_spend = income.spendable / days_between
       end
+      day.unsmoothed_spendable = day.incomes.map(&:unsmoothed_daily_spend).reduce(&:+)
     end
 
     # TODO: smooth in the same loop as calc'ing spend/day?
@@ -256,7 +258,7 @@ class Timeline
         i_inner_day = i_smooth_window_start
         while i_inner_day < @days.length
           inner_day = @days[i_inner_day]
-          next if inner_day.incomes.length == 0
+          next if inner_day.nil? || inner_day.incomes.length == 0
 
           daily_spendable = days_income.map do |income|
             # multiple smoothing passes, default to prior smoothing, but
@@ -264,20 +266,22 @@ class Timeline
             income.smoothed_daily_spend || income.unsmoothed_daily_spend
           end
 
-          smooth_window_daily_spendable = @days[smooth_window_start]
-          #
+          smooth_window = @days[i_smooth_window_start]
           if daily_spendable >= smooth_window_daily_spendable
             day = inner_day
           end
+
           # have to loop through whole window to update (TODO: do I?). sloow. O(n^2)
+          inner_day += 1
+
+          # cases:
+          # next is lower: push income forward (this is 'smoothing')
+          # next is higher: reset up.
+          # next is same: reset pointers
+
         end
 
-
-        # cases:
-        # next is lower: push income forward (this is 'smoothing')
-        # next is higher: reset up.
-        # next is same: reset pointers
-
+        i_smooth_window_start += 1
       end
       # TODO: a little hack-y to prevent infinite looping like this.
       raise Error("infinute loop") if infinite_guard > 9999
