@@ -32,7 +32,6 @@ class Recurrence
         date: @schedule.start)
       @transactions.push t
     elsif @schedule.type == 'MONTHLY'
-      # TODO: start at start date, monthly dates afterwards
       current = @schedule.start
       while current < timeline_end
         start_of_month = current.change(day: 1)
