@@ -7,7 +7,7 @@
 
 ## Commentary
 
-* 1-3 hours coding/bugfixing the meat, e.g. `Timeline#allocate`: https://github.com/benmathes/problem/blob/master/timeline.rb
+* 1-3 hours coding/bugfixing the meat, e.g. `Timeline#plan`: https://github.com/benmathes/problem/blob/master/timeline.rb
 * ruby environments can be fickle. I don't know how I found broken state between my package manager and ruby version, but I did, and that added a couple hours. #devops
 * I lost 2 hrs debugging the ruby debugger. The debugger fails when the script reads from STDIN.
 * The initial estimate of 2-3 hours seems optimistic for 1k lines of commented/tested code.
@@ -22,6 +22,7 @@
   * ![sketch of algorithm smoothing windows](https://github.com/benmathes/problem/blob/master/sketch_example.jpg)
   * but this requires multiple loops. I can imagine starting from the end and pulling snow forward instead of pushing from the start might not require the outer and inner smoothing loop.
   * A lot of pointers from smoothing windows could be preserved as shortcuts to prevent hidden loops, e.g. storing smoothing window start/end, instead of traversing the full list of income days each time.
+* anywhere [you see a TODO](https://github.com/benmathes/problem/search?utf8=%E2%9C%93&q=TODO)
 
 
 
